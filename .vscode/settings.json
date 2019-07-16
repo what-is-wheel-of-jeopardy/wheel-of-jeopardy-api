@@ -1,0 +1,8 @@
+{
+    "files.exclude": {
+        "**/**.pyc": true,
+        "**/**_pycache_**":true,
+        "**/**pylintrc**":true
+
+    }
+}
