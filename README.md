@@ -1,6 +1,7 @@
-To install requirments `pip install -r requirements.txt`
+1. Install requirments `pip install -r requirements.txt`
 
+2. Run unit test `python test.py`
 
-To start run `gunicorn -b 0.0.0.0:80 app:app`
+3. To start run `gunicorn -b 0.0.0.0:80 app:app`
 
 
