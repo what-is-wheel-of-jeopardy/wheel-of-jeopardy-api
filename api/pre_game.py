@@ -14,32 +14,36 @@ ma = Marshmallow(app)
 
 # Model #1  == category table in PostgreSql
 class Category(db.Model):
-    __tablename__ = 'category_new'
+    __tablename__ = 'category'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200))
+    round = db.Column(db.Integer)
 
 # Model #2  == qa table in PostgreSql
 class QA(db.Model):
-    __tablename__ = 'qa_new'
+    __tablename__ = 'qa'
     id = db.Column(db.Integer, primary_key=True)
     question = db.Column(db.String(1000))
     answer = db.Column(db.String(500))
-    score = db.Column(db.String(100))
+    points = db.Column(db.Integer)
     category_id = db.Column(db.Integer)
 
 # Model #3 == v_get_qas view in PostgreSql
 class V_get_qas(db.Model):
     __tablename__ = 'v_get_qas'
-    id = db.Column(db.String(500), primary_key=True)
+    qa_id = db.Column(db.Integer, primary_key=True)
+    category = db.Column(db.String(200))
+    round = db.Column(db.Integer)
     question = db.Column(db.String(1000))
     answer = db.Column(db.String(500))
+    points = db.Column(db.Integer)
 
 
 # ViewModel #1 == v_get_qas view in PostgreSql
 class QA_Schema(ma.Schema):
     class Meta:
         # Fields to expose
-        fields = ("id", "question", "answer", "score", "category_id")
+        fields = ("id", "question", "answer", "points", "category_id")
 qa_schema = QA_Schema()
 qas_schema = QA_Schema(many=True)
 
@@ -49,7 +53,7 @@ qas_schema = QA_Schema(many=True)
 class Category_Schema(ma.Schema):
     class Meta:
         # Fields to expose
-        fields = ("id", "name")
+        fields = ("id", "name", "round")
 category_schema = Category_Schema()
 categories_schema = Category_Schema(many=True)
 
@@ -64,17 +68,30 @@ def helloWorld():
 
 # QA CRUD starts ----------------------------------------------------------------------
 
-# get all Q and A once game "Start" button clicked
-@app.route("/get_qas", methods=["GET"])
-def get_QAs():
-    QAs = V_get_qas.query.all()
-    json_str = ''
-    for qa in QAs:
-        tmp = '"' + qa.id + '":{"question": "' + qa.question + '","answer":"' + qa.answer + '"},'
-        json_str = json_str + tmp
-    json_str = json_str[:-1]
-    json_str = '{"display":[{' + json_str + '}]}'
+
+@app.route("/get_qas/round/<int:round_number>", methods=["GET"])
+def get_QAs(round_number):
+    Categorys = Category.query.filter_by(round=round_number).all()
+    more_cat = ''
+    for c in Categorys:
+        # Category: level 1
+        QAs = V_get_qas.query.filter_by(round=round_number,category=c.name).all()
+        more_qa = ''
+        for q in QAs:
+            # QA: level 2
+            one_qa = f'"{q.points}": {{"question":"{q.question}", "answer":"{q.answer}", "points":{q.points}}},'
+            more_qa = more_qa + one_qa 
+        more_qa = more_qa[:-1]
+        more_qa = f'{{"qa":{{{more_qa}}},"answeredCount":0}}'
+        one_cat = f'"{c.name}":{more_qa},'
+        more_cat = more_cat + one_cat
+    more_cat = more_cat[:-1]
+    json_str = f'{{{more_cat}}}'
+    # print(json.loads(json_str))
     return json.loads(json_str)
+    
+    
+
 
 
 # get all Q and A for admin portal
@@ -88,7 +105,7 @@ def show_QAs():
 # get all Q and A by category_id for admin portal
 @app.route("/admin/show_qas/<int:category_id>", methods=["GET"])
 def show_QA_by_cat_id(category_id):
-    qa = QA.query.filter_by(category_id=category_id)
+    qa = QA.query.filter_by(category_id=category_id).order_by(QA.points)
     return qas_schema.jsonify(qa)
 
 
@@ -128,7 +145,7 @@ def update_QA(qa_id):
 # get all categories for admin portal
 @app.route("/admin/show_cats", methods=["GET"])
 def show_categories():
-    cat = Category.query.all()
+    cat = Category.query.order_by(Category.round, Category.name).all()
     return categories_schema.jsonify(cat)
 
 
